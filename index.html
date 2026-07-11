@@ -39,7 +39,7 @@
 <div class="header">
     <div>
         <h2 style="margin:0;">Peaceful Lion Creations</h2>
-        <small style="color: #94a3b8;">Standard Terminal Core V4.2</small>
+        <small style="color: #94a3b8;">Standard Terminal Core V4.3</small>
     </div>
     <div class="nav-links">
         <div class="view-box" style="background: #1e293b; color: white; border: none;">
@@ -74,9 +74,9 @@
         <div style="display:flex; justify-content: space-between; align-items:center; flex-wrap: wrap; gap: 15px;">
             <h3 style="margin:0;">Active Checkout Cart</h3>
             
-            <!-- MANUAL SKU INPUT DECK FOR FAST CHECKOUT -->
+            <!-- AUTOMATED ENTRY BAR -->
             <div class="input-group" style="background: #f8fafc; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                <input type="text" id="manualCheckoutSku" placeholder="Type SKU (e.g. ITEM2)" style="width: 150px; padding: 6px;" onkeydown="handleManualSkuKey(event)">
+                <input type="text" id="manualCheckoutSku" placeholder="Scan or Type SKU here..." style="width: 180px; padding: 6px;" onkeydown="handleManualSkuKey(event)">
                 <button class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;" onclick="submitManualCheckoutSku()">+ Add</button>
             </div>
 
@@ -104,7 +104,7 @@
         </div>
     </div>
 
-    <!-- MASTER INVENTORY VIEW, INPUT, & QUICK EDIT MODULE -->
+    <!-- MASTER INVENTORY MODULE -->
     <div id="inventoryModule" class="box hidden">
         <h3 style="margin-top:0;">Master Catalog Sheet</h3>
         
@@ -158,6 +158,8 @@ request.onupgradeneeded = function(e) {
 request.onsuccess = function(e) {
     db = e.target.result;
     refreshInventoryTable();
+    // Automatically lock focus onto the checkout box on startup
+    focusCheckoutInput();
 };
 
 function updateViewLayout() {
@@ -181,11 +183,19 @@ function togglePracticeMode() {
     document.getElementById('practiceBanner').style.display = isPracticeMode ? 'block' : 'none';
 }
 
-// --- HARDWARE BARCODE BUFFER INTERFACE ---
+function focusCheckoutInput() {
+    const inputField = document.getElementById('manualCheckoutSku');
+    if (inputField) inputField.focus();
+}
+
+// --- INTELLIGENT HARDWARE / MANUAL UNIFIED BARCODE ROUTER ---
 let scannerBuffer = '';
 let lastKeyTime = Date.now();
+
 window.addEventListener('keydown', (e) => {
+    // If the user is actively typing inside an input box, let the input field intercept it naturally
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
     const currentTime = Date.now();
     if (currentTime - lastKeyTime > 50) scannerBuffer = '';
     lastKeyTime = currentTime;
@@ -201,7 +211,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key.length === 1) scannerBuffer += e.key;
 });
 
-// --- MANUAL SKU CHECKOUT ENTRY BAR ---
+// Intercepts the barcode scanner's automatic trailing Enter command inside the input field
 function handleManualSkuKey(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -215,8 +225,8 @@ function submitManualCheckoutSku() {
     if (!sku) return;
     
     addSkuToCart(sku);
-    inputField.value = ''; // Reset input text field
-    inputField.focus();   // Keep focused for rapid entry
+    inputField.value = ''; // Clean the line
+    inputField.focus();    // Keep focus locked for the next item
 }
 
 // --- REGISTER MANAGEMENT ENGINE ---
@@ -262,6 +272,7 @@ function removeCartItem(index) {
 function clearCurrentEntry() {
     currentCart = [];
     renderCartUI();
+    focusCheckoutInput();
 }
 
 function completeTransaction() {
@@ -316,6 +327,7 @@ function clearLastSale() {
     tx.objectStore("sales").delete(lastSavedSaleId).onsuccess = function() {
         alert("Last sale wiped from database.");
         lastSavedSaleId = null;
+        focusCheckoutInput();
     };
 }
 
@@ -340,7 +352,6 @@ function refreshInventoryTable() {
     };
 }
 
-// --- DIRECT ADD & EDIT CONTROLLER FUNCTIONS ---
 function saveSingleItem() {
     const sku = document.getElementById('invSku').value.trim().toUpperCase();
     const name = document.getElementById('invName').value.trim();
@@ -360,6 +371,7 @@ function saveSingleItem() {
         document.getElementById('invName').value = '';
         document.getElementById('invPrice').value = '';
         document.getElementById('invStock').value = '100';
+        focusCheckoutInput();
     };
 }
 
@@ -370,7 +382,6 @@ function loadItemToForm(sku, name, price, stock) {
     document.getElementById('invStock').value = stock;
 }
 
-// --- WORD DOCUMENT STACKED VERTICAL PIPE IMPORT PARSER ---
 function processBatchImport() {
     const rawText = document.getElementById('batchTextArea').value.trim();
     if (!rawText) return alert("Pasted data is empty.");
@@ -405,6 +416,7 @@ function processBatchImport() {
         alert(`Success! Perfect match. Imported ${count} items into your inventory list!`);
         document.getElementById('batchTextArea').value = '';
         refreshInventoryTable();
+        focusCheckoutInput();
     };
 }
 </script>
