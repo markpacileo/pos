@@ -32,6 +32,7 @@
         textarea { width: 100%; height: 200px; margin: 10px 0; font-family: monospace; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
         .quick-add-form { display: flex; flex-wrap: wrap; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #cbd5e1; margin-bottom: 15px; }
         .quick-add-form input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; }
+        .sync-deck { background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; }
     </style>
 </head>
 <body>
@@ -39,7 +40,7 @@
 <div class="header">
     <div>
         <h2 style="margin:0;">Peaceful Lion Creations</h2>
-        <small style="color: #94a3b8;">Standard Terminal Core V4.3</small>
+        <small style="color: #94a3b8;">Standard Terminal Core V4.4</small>
     </div>
     <div class="nav-links">
         <div class="view-box" style="background: #1e293b; color: white; border: none;">
@@ -74,7 +75,6 @@
         <div style="display:flex; justify-content: space-between; align-items:center; flex-wrap: wrap; gap: 15px;">
             <h3 style="margin:0;">Active Checkout Cart</h3>
             
-            <!-- AUTOMATED ENTRY BAR -->
             <div class="input-group" style="background: #f8fafc; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
                 <input type="text" id="manualCheckoutSku" placeholder="Scan or Type SKU here..." style="width: 180px; padding: 6px;" onkeydown="handleManualSkuKey(event)">
                 <button class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;" onclick="submitManualCheckoutSku()">+ Add</button>
@@ -108,6 +108,17 @@
     <div id="inventoryModule" class="box hidden">
         <h3 style="margin-top:0;">Master Catalog Sheet</h3>
         
+        <!-- CROSS-MACHINE SYNC DECK -->
+        <div class="sync-deck">
+            <div style="flex: 1;">
+                <strong style="color: #1e40af; font-size:14px;">🔄 Multi-Device Terminal Sync</strong>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: #1e3a8a;">Backup or instantly sync your full catalog, custom adjustments, and stock levels across machines.</p>
+            </div>
+            <button class="btn btn-primary" style="background: #2563eb; padding: 8px 14px; font-size: 12px;" onclick="exportDatabaseFile()">📤 Export Catalog File</button>
+            <button class="btn btn-secondary" style="background: #white; border: 1px solid #cbd5e1; padding: 8px 14px; font-size: 12px;" onclick="document.getElementById('importFileField').click()">📥 Import Catalog File</button>
+            <input type="file" id="importFileField" accept=".json" style="display: none;" onchange="importDatabaseFile(event)">
+        </div>
+
         <div class="quick-add-form">
             <input type="text" id="invSku" placeholder="SKU / Barcode" style="flex: 1; min-width: 100px;">
             <input type="text" id="invName" placeholder="Product Description" style="flex: 2; min-width: 180px;">
@@ -158,7 +169,6 @@ request.onupgradeneeded = function(e) {
 request.onsuccess = function(e) {
     db = e.target.result;
     refreshInventoryTable();
-    // Automatically lock focus onto the checkout box on startup
     focusCheckoutInput();
 };
 
@@ -188,14 +198,11 @@ function focusCheckoutInput() {
     if (inputField) inputField.focus();
 }
 
-// --- INTELLIGENT HARDWARE / MANUAL UNIFIED BARCODE ROUTER ---
 let scannerBuffer = '';
 let lastKeyTime = Date.now();
 
 window.addEventListener('keydown', (e) => {
-    // If the user is actively typing inside an input box, let the input field intercept it naturally
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    
     const currentTime = Date.now();
     if (currentTime - lastKeyTime > 50) scannerBuffer = '';
     lastKeyTime = currentTime;
@@ -211,7 +218,6 @@ window.addEventListener('keydown', (e) => {
     if (e.key.length === 1) scannerBuffer += e.key;
 });
 
-// Intercepts the barcode scanner's automatic trailing Enter command inside the input field
 function handleManualSkuKey(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -225,11 +231,10 @@ function submitManualCheckoutSku() {
     if (!sku) return;
     
     addSkuToCart(sku);
-    inputField.value = ''; // Clean the line
-    inputField.focus();    // Keep focus locked for the next item
+    inputField.value = '';
+    inputField.focus();
 }
 
-// --- REGISTER MANAGEMENT ENGINE ---
 let currentCart = [];
 let lastSavedSaleId = null;
 
@@ -331,7 +336,6 @@ function clearLastSale() {
     };
 }
 
-// --- CATALOG DATA REFRESH ---
 function refreshInventoryTable() {
     const tbody = document.getElementById('inventoryTableBody');
     tbody.innerHTML = '';
@@ -359,7 +363,7 @@ function saveSingleItem() {
     const stock = parseInt(document.getElementById('invStock').value);
 
     if (!sku || !name || isNaN(price) || isNaN(stock)) {
-        return alert("Please fill out all fields (SKU, Description, Price, Stock) to add or edit an item.");
+        return alert("Please fill out all fields to add or edit an item.");
     }
 
     const tx = db.transaction(["products"], "readwrite");
@@ -418,6 +422,52 @@ function processBatchImport() {
         refreshInventoryTable();
         focusCheckoutInput();
     };
+}
+
+// --- SECURE DATA PACKAGING SYNC ENGINE ---
+function exportDatabaseFile() {
+    db.transaction(["products"], "readonly").objectStore("products").getAll().onsuccess = function(e) {
+        const catalogData = e.target.result;
+        if (catalogData.length === 0) return alert("Your inventory database is currently empty. Nothing to export.");
+        
+        const jsonString = JSON.stringify(catalogData, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const link = document.createElement("a");
+        
+        link.href = URL.createObjectURL(blob);
+        link.download = `peaceful_lion_catalog_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+    };
+}
+
+function importDatabaseFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedItems = JSON.parse(e.target.result);
+            if (!Array.isArray(importedItems)) throw new Error("Invalid format.");
+
+            const tx = db.transaction(["products"], "readwrite");
+            const store = tx.objectStore("products");
+            
+            importedItems.forEach(item => {
+                if (item.sku) store.put(item);
+            });
+
+            tx.oncomplete = function() {
+                alert(`Sync Complete! Successfully loaded ${importedItems.length} catalog items into this device.`);
+                refreshInventoryTable();
+                focusCheckoutInput();
+                document.getElementById('importFileField').value = ''; // Reset input
+            };
+        } catch (err) {
+            alert("Error parsing file. Make sure you selected a valid catalog export file.");
+        }
+    };
+    reader.readAsText(file);
 }
 </script>
 
