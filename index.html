@@ -39,7 +39,7 @@
 <div class="header">
     <div>
         <h2 style="margin:0;">Peaceful Lion Creations</h2>
-        <small style="color: #94a3b8;">Standard Terminal Core V4.1</small>
+        <small style="color: #94a3b8;">Standard Terminal Core V4.2</small>
     </div>
     <div class="nav-links">
         <div class="view-box" style="background: #1e293b; color: white; border: none;">
@@ -71,8 +71,15 @@
     
     <!-- CHECKOUT REGISTER MODULE -->
     <div id="posModule" class="box">
-        <div style="display:flex; justify-content: space-between; align-items:center;">
+        <div style="display:flex; justify-content: space-between; align-items:center; flex-wrap: wrap; gap: 15px;">
             <h3 style="margin:0;">Active Checkout Cart</h3>
+            
+            <!-- MANUAL SKU INPUT DECK FOR FAST CHECKOUT -->
+            <div class="input-group" style="background: #f8fafc; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <input type="text" id="manualCheckoutSku" placeholder="Type SKU (e.g. ITEM2)" style="width: 150px; padding: 6px;" onkeydown="handleManualSkuKey(event)">
+                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;" onclick="submitManualCheckoutSku()">+ Add</button>
+            </div>
+
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-secondary" onclick="clearCurrentEntry()">Clear Current Entry</button>
                 <button class="btn btn-danger" onclick="clearLastSale()">Clear Last Registered Sale</button>
@@ -101,7 +108,6 @@
     <div id="inventoryModule" class="box hidden">
         <h3 style="margin-top:0;">Master Catalog Sheet</h3>
         
-        <!-- LIVE ADD / EDIT ON THE FLY ROW -->
         <div class="quick-add-form">
             <input type="text" id="invSku" placeholder="SKU / Barcode" style="flex: 1; min-width: 100px;">
             <input type="text" id="invName" placeholder="Product Description" style="flex: 2; min-width: 180px;">
@@ -125,7 +131,6 @@
             </table>
         </div>
 
-        <!-- BATCH WORD DOC IMPORT INGESTION BOX -->
         <div class="batch-zone">
             <h4 style="margin:0; color:#0f172a;">📋 Batch Word Document Importer</h4>
             <p style="font-size:13px; color:#475569; margin: 4px 0 10px 0;">Copy your rows straight out of Word and paste them right here. The system safely breaks down your vertical bars (|) and stacked rows automatically.</p>
@@ -176,6 +181,7 @@ function togglePracticeMode() {
     document.getElementById('practiceBanner').style.display = isPracticeMode ? 'block' : 'none';
 }
 
+// --- HARDWARE BARCODE BUFFER INTERFACE ---
 let scannerBuffer = '';
 let lastKeyTime = Date.now();
 window.addEventListener('keydown', (e) => {
@@ -195,6 +201,25 @@ window.addEventListener('keydown', (e) => {
     if (e.key.length === 1) scannerBuffer += e.key;
 });
 
+// --- MANUAL SKU CHECKOUT ENTRY BAR ---
+function handleManualSkuKey(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        submitManualCheckoutSku();
+    }
+}
+
+function submitManualCheckoutSku() {
+    const inputField = document.getElementById('manualCheckoutSku');
+    const sku = inputField.value.trim().toUpperCase();
+    if (!sku) return;
+    
+    addSkuToCart(sku);
+    inputField.value = ''; // Reset input text field
+    inputField.focus();   // Keep focused for rapid entry
+}
+
+// --- REGISTER MANAGEMENT ENGINE ---
 let currentCart = [];
 let lastSavedSaleId = null;
 
@@ -331,7 +356,6 @@ function saveSingleItem() {
     
     tx.oncomplete = function() {
         refreshInventoryTable();
-        // Clear input form fields
         document.getElementById('invSku').value = '';
         document.getElementById('invName').value = '';
         document.getElementById('invPrice').value = '';
