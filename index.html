@@ -16,7 +16,7 @@
         .input-group label { font-weight: bold; font-size: 14px; }
         .input-group input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
         .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        @media(min-width: 1024px) { .grid.split-view { grid-template-columns: 1.2fr 0.8fr; } }
+        @media(min-width: 1024px) { .grid.split-view { grid-template-columns: 1.1fr 0.9fr; } }
         .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: fit-content; }
         .hidden { display: none !important; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -29,7 +29,9 @@
         .btn-success { background: #16a34a; color: white; }
         .total-display { font-size: 36px; font-weight: bold; color: #0f172a; margin: 20px 0; }
         .batch-zone { background: #f8fafc; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 8px; margin-top: 25px; }
-        textarea { width: 100%; height: 250px; margin: 10px 0; font-family: monospace; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        textarea { width: 100%; height: 200px; margin: 10px 0; font-family: monospace; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .quick-add-form { display: flex; flex-wrap: wrap; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #cbd5e1; margin-bottom: 15px; }
+        .quick-add-form input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -37,7 +39,7 @@
 <div class="header">
     <div>
         <h2 style="margin:0;">Peaceful Lion Creations</h2>
-        <small style="color: #94a3b8;">Standard Terminal Core V4</small>
+        <small style="color: #94a3b8;">Standard Terminal Core V4.1</small>
     </div>
     <div class="nav-links">
         <div class="view-box" style="background: #1e293b; color: white; border: none;">
@@ -50,7 +52,6 @@
 
 <div id="practiceBanner" class="practice-banner">⚠️ PRACTICE MODE ACTIVE — SALES WILL NOT AFFECT INVENTORY OR TAX LOGS ⚠️</div>
 
-<!-- DISPLAY TOGGLES & CONTEXT CONTROL PANEL -->
 <div class="controls-row">
     <div class="view-box">
         <input type="checkbox" id="showPosCheck" checked onchange="updateViewLayout()">
@@ -66,7 +67,6 @@
     </div>
 </div>
 
-<!-- WORKING AREA GRID -->
 <div id="mainGrid" class="grid">
     
     <!-- CHECKOUT REGISTER MODULE -->
@@ -88,9 +88,7 @@
                     <th>Action</th>
                 </tr>
             </thead>
-            <tbody id="cartTableBody">
-                <!-- Items populate dynamically -->
-            </tbody>
+            <tbody id="cartTableBody"></tbody>
         </table>
         
         <div style="margin-top: 20px; border-top: 2px solid #e2e8f0; text-align: right;">
@@ -99,9 +97,19 @@
         </div>
     </div>
 
-    <!-- MASTER INVENTORY VIEW & INPUT MODULE -->
+    <!-- MASTER INVENTORY VIEW, INPUT, & QUICK EDIT MODULE -->
     <div id="inventoryModule" class="box hidden">
         <h3 style="margin-top:0;">Master Catalog Sheet</h3>
+        
+        <!-- LIVE ADD / EDIT ON THE FLY ROW -->
+        <div class="quick-add-form">
+            <input type="text" id="invSku" placeholder="SKU / Barcode" style="flex: 1; min-width: 100px;">
+            <input type="text" id="invName" placeholder="Product Description" style="flex: 2; min-width: 180px;">
+            <input type="number" id="invPrice" step="0.01" placeholder="Price ($)" style="width: 80px;">
+            <input type="number" id="invStock" placeholder="Stock Qty" style="width: 80px;" value="100">
+            <button class="btn btn-primary" style="padding: 8px 15px; font-size: 13px;" onclick="saveSingleItem()">Save / Update Item</button>
+        </div>
+
         <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius:6px;">
             <table>
                 <thead>
@@ -110,11 +118,10 @@
                         <th>Item Description</th>
                         <th>Price</th>
                         <th>Stock</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
-                <tbody id="inventoryTableBody">
-                    <!-- Master stock lines go here -->
-                </tbody>
+                <tbody id="inventoryTableBody"></tbody>
             </table>
         </div>
 
@@ -129,7 +136,6 @@
 </div>
 
 <script>
-// --- CORE LOCAL-FIRST DATABASE ENGINE ---
 const dbName = "PeacefulLionCreationsDB_V4";
 const dbVersion = 1;
 let db;
@@ -149,7 +155,6 @@ request.onsuccess = function(e) {
     refreshInventoryTable();
 };
 
-// --- MULTI-VIEW TAB CONFIGURATION ---
 function updateViewLayout() {
     const showPos = document.getElementById('showPosCheck').checked;
     const showInv = document.getElementById('showInvCheck').checked;
@@ -165,14 +170,12 @@ function updateViewLayout() {
     else grid.classList.remove('split-view');
 }
 
-// --- PRACTICE MODE RULES ---
 let isPracticeMode = false;
 function togglePracticeMode() {
     isPracticeMode = document.getElementById('practiceModeToggle').checked;
     document.getElementById('practiceBanner').style.display = isPracticeMode ? 'block' : 'none';
 }
 
-// --- HARDWARE BARCODE BUFFER INTERFACE ---
 let scannerBuffer = '';
 let lastKeyTime = Date.now();
 window.addEventListener('keydown', (e) => {
@@ -192,7 +195,6 @@ window.addEventListener('keydown', (e) => {
     if (e.key.length === 1) scannerBuffer += e.key;
 });
 
-// --- REGISTER MANAGEMENT ENGINE ---
 let currentCart = [];
 let lastSavedSaleId = null;
 
@@ -209,7 +211,6 @@ function addSkuToCart(sku) {
     };
 }
 
-// Render dynamic cart row entries
 function renderCartUI() {
     const tbody = document.getElementById('cartTableBody');
     tbody.innerHTML = '';
@@ -307,10 +308,42 @@ function refreshInventoryTable() {
                 <td><strong>${item.name}</strong></td>
                 <td>$${item.price.toFixed(2)}</td>
                 <td>${item.stock || 0} units</td>
+                <td><button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="loadItemToForm('${item.sku}', '${item.name.replace(/'/g, "\\'")}', ${item.price}, ${item.stock || 0})">Edit</button></td>
             `;
             tbody.appendChild(row);
         });
     };
+}
+
+// --- DIRECT ADD & EDIT CONTROLLER FUNCTIONS ---
+function saveSingleItem() {
+    const sku = document.getElementById('invSku').value.trim().toUpperCase();
+    const name = document.getElementById('invName').value.trim();
+    const price = parseFloat(document.getElementById('invPrice').value);
+    const stock = parseInt(document.getElementById('invStock').value);
+
+    if (!sku || !name || isNaN(price) || isNaN(stock)) {
+        return alert("Please fill out all fields (SKU, Description, Price, Stock) to add or edit an item.");
+    }
+
+    const tx = db.transaction(["products"], "readwrite");
+    tx.objectStore("products").put({ sku, name, price, stock });
+    
+    tx.oncomplete = function() {
+        refreshInventoryTable();
+        // Clear input form fields
+        document.getElementById('invSku').value = '';
+        document.getElementById('invName').value = '';
+        document.getElementById('invPrice').value = '';
+        document.getElementById('invStock').value = '100';
+    };
+}
+
+function loadItemToForm(sku, name, price, stock) {
+    document.getElementById('invSku').value = sku;
+    document.getElementById('invName').value = name;
+    document.getElementById('invPrice').value = price.toFixed(2);
+    document.getElementById('invStock').value = stock;
 }
 
 // --- WORD DOCUMENT STACKED VERTICAL PIPE IMPORT PARSER ---
@@ -318,7 +351,6 @@ function processBatchImport() {
     const rawText = document.getElementById('batchTextArea').value.trim();
     if (!rawText) return alert("Pasted data is empty.");
 
-    // Split text cleanly by vertical pipes
     const segments = rawText.split('|');
     const tx = db.transaction(["products"], "readwrite");
     const store = tx.objectStore("products");
@@ -327,11 +359,8 @@ function processBatchImport() {
     for (let i = 1; i < segments.length; i += 3) {
         if (!segments[i] || !segments[i+1]) break;
 
-        // Extract description line from segment
         const description = segments[i].trim().split('\n')[0].trim();
-        // Clear dollar signs and clean currency digits
         const priceClean = segments[i+1].trim().split('\n')[0].replace(/[^0-9.]/g, '');
-        // Isolate the next item's SKU header string
         const nextSkuRaw = segments[i+1].trim().split('\n')[2] || "";
         
         let sku = (i === 1) ? rawText.split('|')[0].split('\n').pop().trim() : nextSkuRaw.trim();
