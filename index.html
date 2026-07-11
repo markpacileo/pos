@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peaceful Lion Creations - POS Terminal</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 20px; background: #f1f5f9; color: #1e293b; }
+        .header { background: #0f172a; color: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .nav-links { display: flex; gap: 15px; align-items: center; }
+        .nav-links a { color: #38bdf8; text-decoration: none; font-weight: bold; font-size: 14px; background: rgba(56,189,248,0.1); padding: 8px 16px; border-radius: 6px; }
+        .practice-banner { display: none; background: #ea580c; color: white; text-align: center; padding: 10px; font-weight: bold; border-radius: 6px; margin-bottom: 20px; font-size: 16px; letter-spacing: 0.05em; }
+        .controls-row { display: flex; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); align-items: center; flex-wrap: wrap; }
+        .view-box { display: flex; align-items: center; gap: 8px; font-weight: bold; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; }
+        .input-group { display: flex; align-items: center; gap: 8px; }
+        .input-group label { font-weight: bold; font-size: 14px; }
+        .input-group input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media(min-width: 1024px) { .grid.split-view { grid-template-columns: 1.2fr 0.8fr; } }
+        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: fit-content; }
+        .hidden { display: none !important; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-secondary { background: #e2e8f0; color: #334155; }
+        .btn-success { background: #16a34a; color: white; }
+        .total-display { font-size: 36px; font-weight: bold; color: #0f172a; margin: 20px 0; }
+        .batch-zone { background: #f8fafc; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 8px; margin-top: 25px; }
+        textarea { width: 100%; height: 120px; margin: 10px 0; font-family: monospace; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h2 style="margin:0;">Peaceful Lion Creations</h2>
+        <small style="color: #94a3b8;">Standard Terminal Core V4</small>
+    </div>
+    <div class="nav-links">
+        <div class="view-box" style="background: #1e293b; color: white; border: none;">
+            <input type="checkbox" id="practiceModeToggle" onchange="togglePracticeMode()">
+            <label for="practiceModeToggle" style="cursor:pointer; color: #f97316;">⚠️ PRACTICE MODE</label>
+        </div>
+        <a href="records.html">📈 GO TO RECORDS PAGE →</a>
+    </div>
+</div>
+
+<div id="practiceBanner" class="practice-banner">⚠️ PRACTICE MODE ACTIVE — SALES WILL NOT AFFECT INVENTORY OR TAX LOGS ⚠️</div>
+
+<!-- DISPLAY TOGGLES & CONTEXT CONTROL PANEL -->
+<div class="controls-row">
+    <div class="view-box">
+        <input type="checkbox" id="showPosCheck" checked onchange="updateViewLayout()">
+        <label for="showPosCheck" style="cursor:pointer;">Show Checkout Cart</label>
+    </div>
+    <div class="view-box">
+        <input type="checkbox" id="showInvCheck" onchange="updateViewLayout()">
+        <label for="showInvCheck" style="cursor:pointer;">Show Master Inventory</label>
+    </div>
+    <div class="input-group" style="margin-left: auto;">
+        <label for="showNameInput">Current Show Name:</label>
+        <input type="text" id="showNameInput" value="Local Craft Show" placeholder="e.g., Erie Fair 2026">
+    </div>
+</div>
+
+<!-- WORKING AREA GRID -->
+<div id="mainGrid" class="grid">
+    
+    <!-- CHECKOUT REGISTER MODULE -->
+    <div id="posModule" class="box">
+        <div style="display:flex; justify-content: space-between; align-items:center;">
+            <h3 style="margin:0;">Active Checkout Cart</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" onclick="clearCurrentEntry()">Clear Current Entry</button>
+                <button class="btn btn-danger" onclick="clearLastSale()">Clear Last Registered Sale</button>
+            </div>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Item Description</th>
+                    <th>SKU / Barcode</th>
+                    <th>Price</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="cartTableBody">
+                <!-- Items populate dynamically -->
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px; border-top: 2px solid #e2e8f0; text-align: right;">
+            <div class="total-display">Total: $<span id="cartTotalDisplay">0.00</span></div>
+            <button class="btn btn-primary" style="font-size:18px; padding:15px 40px;" onclick="completeTransaction()">Complete & Log Sale</button>
+        </div>
+    </div>
+
+    <!-- MASTER INVENTORY VIEW & INPUT MODULE -->
+    <div id="inventoryModule" class="box hidden">
+        <h3 style="margin-top:0;">Master Catalog Sheet</h3>
+        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius:6px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Item Description</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTableBody">
+                    <!-- Master stock lines go here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- BATCH WORD DOC IMPORT INGESTION BOX -->
+        <div class="batch-zone">
+            <h4 style="margin:0; color:#0f172a;">📋 Batch Word Document Importer</h4>
+            <p style="font-size:13px; color:#475569; margin: 4px 0 10px 0;">Copy your rows straight out of Word and paste them right here. The system safely breaks them down into columns automatically.</p>
+            <textarea id="batchTextArea" placeholder="Example format from Word columns:&#10;SKU001    Blue Fidget Clicker    15.00&#10;SKU002    Glow-In-The-Dark Owl    12.50"></textarea>
+            <button class="btn btn-success" onclick="processBatchImport()">⚡ Execute Ingest & Sync Database</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- CORE LOCAL-FIRST DATABASE ENGINE ---
+const dbName = "PeacefulLionCreationsDB_V4";
+const dbVersion = 1;
+let db;
+
+const request = indexedDB.open(dbName, dbVersion);
+request.onupgradeneeded = function(e) {
+    let database = e.target.result;
+    if (!database.objectStoreNames.contains("products")) {
+        database.createObjectStore("products", { keyPath: "sku" });
+    }
+    if (!database.objectStoreNames.contains("sales")) {
+        database.createObjectStore("sales", { keyPath: "id", autoIncrement: true });
+    }
+};
+request.onsuccess = function(e) {
+    db = e.target.result;
+    refreshInventoryTable();
+};
+
+// --- MULTI-VIEW TAB CONFIGURATION ---
+function updateViewLayout() {
+    const showPos = document.getElementById('showPosCheck').checked;
+    const showInv = document.getElementById('showInvCheck').checked;
+    const grid = document.getElementById('mainGrid');
+    
+    if (showPos) document.getElementById('posModule').classList.remove('hidden');
+    else document.getElementById('posModule').classList.add('hidden');
+    
+    if (showInv) document.getElementById('inventoryModule').classList.remove('hidden');
+    else document.getElementById('inventoryModule').classList.add('hidden');
+    
+    if (showPos && showInv) grid.classList.add('split-view');
+    else grid.classList.remove('split-view');
+}
+
+// --- PRACTICE MODE RULES ---
+let isPracticeMode = false;
+function togglePracticeMode() {
+    isPracticeMode = document.getElementById('practiceModeToggle').checked;
+    document.getElementById('practiceBanner').style.display = isPracticeMode ? 'block' : 'none';
+}
+
+// --- HARDWARE BARCODE BUFFER INTERFACE ---
+let scannerBuffer = '';
+let lastKeyTime = Date.now();
+window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const currentTime = Date.now();
+    if (currentTime - lastKeyTime > 50) scannerBuffer = '';
+    lastKeyTime = currentTime;
+    
+    if (e.key === 'Enter') {
+        if (scannerBuffer.length > 0) {
+            e.preventDefault();
+            addSkuToCart(scannerBuffer.toUpperCase().trim());
+            scannerBuffer = '';
+        }
+        return;
+    }
+    if (e.key.length === 1) scannerBuffer += e.key;
+});
+
+// --- REGISTER MANAGEMENT ENGINE ---
+let currentCart = [];
+let lastSavedSaleId = null;
+
+function addSkuToCart(sku) {
+    const tx = db.transaction(["products"], "readonly");
+    tx.objectStore("products").get(sku).onsuccess = function(e) {
+        const item = e.target.result;
+        if (item) {
+            currentCart.push({...item});
+            renderCartUI();
+        } else {
+            alert(`SKU Not Found: ${sku}`);
+        }
+    };
+}
+
+function renderCartUI() {
+    const tbody = document.getElementById('cartTableBody');
+    tbody.innerHTML = '';
+    let total = 0;
+    currentCart.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${item.name}</strong></td>
+            <td><code>${item.sku}</code></td>
+            <td>$${item.price.toFixed(2)}</td>
+            <td><button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="removeCartItem(${index})">Delete</button></td>
+        `;
+        tbody.appendChild(row);
+        total += item.price;
+    });
+    document.getElementById('cartTotalDisplay').textContent = total.toFixed(2);
+}
+
+function removeCartItem(index) {
+    currentCart.splice(index, 1);
+    renderCartUI();
+}
+
+function clearCurrentEntry() {
+    currentCart = [];
+    renderCartUI();
+}
+
+function completeTransaction() {
+    if (currentCart.length === 0) return alert("Cart is empty.");
+    if (isPracticeMode) {
+        alert("Practice transaction complete! (No records written to ledger)");
+        clearCurrentEntry();
+        return;
+    }
+
+    const currentShow = document.getElementById('showNameInput').value.trim() || "Unassigned Craft Show";
+    const now = new Date();
+    
+    const saleRecord = {
+        timestamp: now.toISOString(),
+        dateString: now.toISOString().split('T')[0], // YYYY-MM-DD
+        yearMonth: now.toISOString().slice(0, 7),    // YYYY-MM
+        showName: currentShow,
+        items: currentCart,
+        total: currentCart.reduce((sum, item) => sum + item.price, 0)
+    };
+
+    const tx = db.transaction(["sales", "products"], "readwrite");
+    
+    // Log sales ledger entries
+    tx.objectStore("sales").add(saleRecord).onsuccess = function(e) {
+        lastSavedSaleId = e.target.result;
+    };
+
+    // Deduct stock levels safely
+    const prodStore = tx.objectStore("products");
+    currentCart.forEach(cartItem => {
+        prodStore.get(cartItem.sku).onsuccess = function(e) {
+            const prod = e.target.result;
+            if (prod && prod.stock !== undefined) {
+                prod.stock = Math.max(0, prod.stock - 1);
+                prodStore.put(prod);
+            }
+        };
+    });
+
+    tx.oncomplete = function() {
+        clearCurrentEntry();
+        refreshInventoryTable();
+        alert("Transaction recorded directly to show ledger!");
+    };
+}
+
+function clearLastSale() {
+    if (!lastSavedSaleId) return alert("No active transactions logged in this browser session tab yet.");
+    if (!confirm("Are you sure you want to reverse and permanently erase the last logged transaction?")) return;
+
+    const tx = db.transaction(["sales"], "readwrite");
+    tx.objectStore("sales").delete(lastSavedSaleId).onsuccess = function() {
+        alert("Last sale wiped from database.");
+        lastSavedSaleId = null;
+    };
+}
+
+// --- CATALOG DATA REFRESH ---
+function refreshInventoryTable() {
+    const tbody = document.getElementById('inventoryTableBody');
+    tbody.innerHTML = '';
+    if (!db) return;
+    
+    db.transaction(["products"], "readonly").objectStore("products").getAll().onsuccess = function(e) {
+        e.target.result.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><code>${item.sku}</code></td>
+                <td><strong>${item.name}</strong></td>
+                <td>$${item.price.toFixed(2)}</td>
+                <td>${item.stock || 0} units</td>
+            `;
+            tbody.appendChild(row);
+        });
+    };
+}
+
+// --- WORD DOCUMENT BATCH INGESTION CONTROLLER ---
+function processBatchImport() {
+    const rawText = document.getElementById('batchTextArea').value.trim();
+    if (!rawText) return alert("Pasted array is empty. Please copy lines out of Word first.");
+
+    const lines = rawText.split('\n');
+    const tx = db.transaction(["products"], "readwrite");
+    const store = tx.objectStore("products");
+    let count = 0;
+
+    lines.forEach(line => {
+        // Splitting across flexible spacing blocks to instantly handle Word's column structures safely
+        const columns = line.split(/\t+| {2,}/);
+        if (columns.length >= 2) {
+            const sku = columns[0].trim().toUpperCase();
+            const description = columns[1].trim();
+            const price = columns[2] ? parseFloat(columns[2].replace(/[^0-9.]/g, '')) : 0.00;
+
+            if (sku && description) {
+                store.put({
+                    sku: sku,
+                    name: description,
+                    price: price,
+                    stock: 100 // Starting default value pool
+                });
+                count++;
+            }
+        }
+    });
+
+    tx.oncomplete = function() {
+        alert(`Success! Captured and matched ${count} rows straight into your inventory dataset.`);
+        document.getElementById('batchTextArea').value = '';
+        refreshInventoryTable();
+    };
+}
+</script>
+
+</body>
+</html>

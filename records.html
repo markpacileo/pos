@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peaceful Lion Creations - Show Records</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 20px; background: #f8fafc; color: #1e293b; }
+        .header { background: #0f172a; color: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .back-btn { color: white; text-decoration: none; font-weight: bold; background: #2563eb; padding: 10px 20px; border-radius: 6px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 5px solid #3b82f6; }
+        .stat-card h4 { margin: 0 0 10px 0; color: #64748b; font-size: 13px; text-transform: uppercase; }
+        .stat-card .value { font-size: 28px; font-weight: bold; color: #0f172a; }
+        .section { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .sec-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 15px; }
+        .sec-header h3 { margin: 0; color: #0f172a; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; color: #475569; font-size: 12px; text-transform: uppercase; }
+        .btn-dl { background: #16a34a; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h2 style="margin:0;">Show Performance Analytics</h2>
+        <small style="color: #94a3b8;">Real-Time Financial Reporting Ledgers</small>
+    </div>
+    <a href="index.html" class="back-btn">← BACK TO REGISTER TERMINAL</a>
+</div>
+
+<!-- TOP TIER TIMEFRAME METRICS MATRIX -->
+<div class="stats-grid">
+    <div class="stat-card" style="border-left-color: #10b981;">
+        <h4>Daily Sales Total</h4>
+        <div id="statDaily" class="value">$0.00</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #3b82f6;">
+        <h4>Current Show Total</h4>
+        <div id="statShow" class="value">$0.00</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #8b5cf6;">
+        <h4>Monthly Volume</h4>
+        <div id="statMonthly" class="value">$0.00</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #f59e0b;">
+        <h4>Quarterly Volume</h4>
+        <div id="statQuarterly" class="value">$0.00</div>
+    </div>
+</div>
+
+<!-- SHOW BY SHOW PERFORMANCE LIST -->
+<div class="section">
+    <div class="sec-header">
+        <h3>Show Event Summary (Highest to Lowest)</h3>
+        <button class="btn-dl" onclick="downloadCsv('showTable', 'Show_Performance_Report.csv')">📊 Export Show List (.CSV)</button>
+    </div>
+    <table id="showTable">
+        <thead>
+            <tr>
+                <th>Show / Event Location Identifier</th>
+                <th>Total Gross Revenue Generated</th>
+            </tr>
+        </thead>
+        <tbody id="showTableBody">
+            <!-- Populated dynamically -->
+        </tbody>
+    </table>
+</div>
+
+<!-- ITEM BY ITEM PERFORMANCE RANKINGS -->
+<div class="section">
+    <div class="sec-header">
+        <h3>Individual Item Sales Leaderboard</h3>
+        <button class="btn-dl" onclick="downloadCsv('itemTable', 'Item_Leaderboard_Report.csv')">📊 Export Item Rankings (.CSV)</button>
+    </div>
+    <table id="itemTable">
+        <thead>
+            <tr>
+                <th>Product SKU</th>
+                <th>Item Description</th>
+                <th>Units Confirmed Sold</th>
+                <th>Total Gross Contribution Margin</th>
+            </tr>
+        </thead>
+        <tbody id="itemTableBody">
+            <!-- Populated dynamically -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+const dbName = "PeacefulLionCreationsDB_V4";
+let db;
+
+const request = indexedDB.open(dbName, 1);
+request.onsuccess = function(e) {
+    db = e.target.result;
+    calculateAllReports();
+};
+
+function calculateAllReports() {
+    if (!db) return;
+    
+    db.transaction(["sales"], "readonly").objectStore("sales").getAll().onsuccess = function(e) {
+        const sales = e.target.result;
+        
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const thisMonthStr = now.toISOString().slice(0, 7);
+        const currentYear = now.getFullYear();
+        const currentQuarter = Math.floor((now.getMonth() + 3) / 3);
+
+        let dailyTotal = 0;
+        let monthlyTotal = 0;
+        let quarterlyTotal = 0;
+        let activeShowTotal = 0;
+
+        const showMap = {};
+        const itemMap = {};
+
+        // Single pass layout scanner logic
+        sales.forEach(sale => {
+            const saleDate = new Date(sale.timestamp);
+            const saleYear = saleDate.getFullYear();
+            const saleQuarter = Math.floor((saleDate.getMonth() + 3) / 3);
+            
+            // Time aggregation blocks
+            if (sale.dateString === todayStr) dailyTotal += sale.total;
+            if (sale.yearMonth === thisMonthStr) monthlyTotal += sale.total;
+            if (saleYear === currentYear && saleQuarter === currentQuarter) quarterlyTotal += sale.total;
+
+            // Show performance calculations
+            if (sale.showName) {
+                showMap[sale.showName] = (showMap[sale.showName] || 0) + sale.total;
+            }
+
+            // Item popularity performance loop tracker
+            if (sale.items && Array.isArray(sale.items)) {
+                sale.items.forEach(item => {
+                    if (!itemMap[item.sku]) {
+                        itemMap[item.sku] = { name: item.name, qty: 0, revenue: 0 };
+                    }
+                    itemMap[item.sku].qty += 1;
+                    itemMap[item.sku].revenue += item.price;
+                });
+            }
+        });
+
+        // Set quick stats
+        document.getElementById('statDaily').textContent = `$${dailyTotal.toFixed(2)}`;
+        document.getElementById('statMonthly').textContent = `$${monthlyTotal.toFixed(2)}`;
+        document.getElementById('statQuarterly').textContent = `$${quarterlyTotal.toFixed(2)}`;
+
+        // Process Show Table Rows
+        const sortedShows = Object.keys(showMap).map(name => ({name, total: showMap[name]})).sort((a,b) => b.total - a.total);
+        const showTbody = document.getElementById('showTableBody');
+        showTbody.innerHTML = '';
+        
+        if(sortedShows.length > 0) {
+            document.getElementById('statShow').textContent = `$${sortedShows[0].total.toFixed(2)}`; // Sets active highest show total metric card box
+        }
+
+        sortedShows.forEach(s => {
+            const r = document.createElement('tr');
+            r.innerHTML = `<td><strong>${s.name}</strong></td><td>$${s.total.toFixed(2)}</td>`;
+            showTbody.appendChild(r);
+        });
+
+        // Process Item Leaderboard Rows
+        const sortedItems = Object.keys(itemMap).map(sku => ({sku, ...itemMap[sku]})).sort((a,b) => b.revenue - a.revenue);
+        const itemTbody = document.getElementById('itemTableBody');
+        itemTbody.innerHTML = '';
+        
+        sortedItems.forEach(i => {
+            const r = document.createElement('tr');
+            r.innerHTML = `
+                <td><code>${i.sku}</code></td>
+                <td><strong>${i.name}</strong></td>
+                <td>${i.qty} units</td>
+                <td>$${i.revenue.toFixed(2)}</td>
+            `;
+            itemTbody.appendChild(r);
+        });
+    };
+}
+
+// --- DIRECT EXCEL COMPATIBLE CSV ENGINE ---
+function downloadCsv(tableId, filename) {
+    const table = document.getElementById(tableId);
+    let csv = [];
+    const rows = table.querySelectorAll("tr");
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = [], cols = rows[i].querySelectorAll("td, th");
+        for (let j = 0; j < cols.length; j++) {
+            // Clean up any stray string commas to keep cells perfectly bounded inside Excel files
+            let data = cols[j].innerText.replace(/"/g, '""');
+            row.push('"' + data + '"');
+        }
+        csv.push(row.join(","));
+    }
+    
+    const csvFile = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const dlLink = document.createElement("a");
+    dlLink.download = filename;
+    dlLink.href = window.URL.createObjectURL(csvFile);
+    dlLink.style.display = "none";
+    document.body.appendChild(dlLink);
+    dlLink.click();
+    dlLink.remove();
+}
+</script>
+
+</body>
+</html>
